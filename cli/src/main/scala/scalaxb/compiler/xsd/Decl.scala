@@ -25,7 +25,7 @@ package scalaxb.compiler.xsd
 import scala.collection.{Map, Set}
 import scala.collection.mutable
 import scala.collection.immutable
-import java.net.URI
+import scala.util.Try
 import scala.xml.NamespaceBinding
 
 abstract class Decl
@@ -416,6 +416,8 @@ object ElemDecl {
     var typeSymbol: XsTypeSymbol = XsAnyType
 
     (node \ "@type").headOption map { typeName =>
+      // Why use the node namespace for the reference ??? it may not always be
+      // TODO: This is why it's broken. This needs to be fixed.
       typeSymbol = TypeSymbolParser.fromString(typeName.text, node.scope, config)
     } getOrElse {
       for (child <- node.child) child.label match {

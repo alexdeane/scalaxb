@@ -227,19 +227,26 @@ trait Module {
         missingDependencies(importable, current) }).distinct
 
       val additional = missings flatMap { x =>
-        val uri = new URI(x)
-        val file = new File(new File(uri.getPath).getName)
+        val file = new File(new File(x).getName)
 
         if (file.exists) Some(file)
-        else None
+        else {
+          val externalPath = new File(x)
+          if (externalPath.exists) Some(externalPath)
+          else None
+        }
       }
       var added = false
       additionalImportables ++= (additional map { x =>
         logger.warn("added " + x + " to compilation.")
         added = true
-        val importable = toImportable(implicitly[CanBeRawSchema[File, RawSchema]].toURI(x),
-          implicitly[CanBeRawSchema[File, RawSchema]].toRawSchema(x))
-        val s = parse(importable, context)
+
+        val importable: Importable = toImportable(
+          implicitly[CanBeRawSchema[File, RawSchema]].toURI(x),
+          implicitly[CanBeRawSchema[File, RawSchema]].toRawSchema(x)
+        )
+
+        val s: Schema = parse(importable, context)
         schemas(importable) = s
         (importable, x) })
       if (added) addMissingFiles()
@@ -249,7 +256,7 @@ trait Module {
       val all = (importables.toList map {_._1}) ++ (additionalImportables.toList map {_._1})
       val parents: ListBuffer[Importable] = ListBuffer(all filter { !_.includeLocations.isEmpty}: _*)
       def children(importable: Importable): List[Importable] = {
-        val uris = importable.includeLocations map { includedLoc => shortenUri(new URI(includedLoc)) }
+        val uris: Seq[String] = importable.includeLocations map { includedLoc => shortenUri(new URI(includedLoc)) }
         all filter { x => uris contains shortenUri(x.location) }
       }
       val mapping: ListMap[Importable, Option[String]] = ListMap()
@@ -456,8 +463,18 @@ trait Module {
       else Nil
     }
 
-    (locationBased ::: includes).distinct
+    // Base path of this importable
+    val basePath = new File(importable.location.getPath)
+
+    (locationBased ::: includes).distinct map { l =>
+      resolveRelative(basePath, l)
+    }
     // (nsBased ::: locationBased ::: includes).distinct
+  }
+
+  private def resolveRelative(baseDir: File, relativePath: String): String = {
+    val basePath = if (baseDir.isDirectory) baseDir.toPath else baseDir.toPath.getParent
+    basePath.resolve(relativePath).normalize().toAbsolutePath.toString
   }
 
   def buildContext: Context
