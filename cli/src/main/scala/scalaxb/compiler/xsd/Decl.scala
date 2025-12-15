@@ -22,10 +22,11 @@
 
 package scalaxb.compiler.xsd
 
-import scala.collection.{Map, Set}
+import masked.scalaxb.Helper.nullOrEmpty
+
+import scala.collection.{Map}
 import scala.collection.mutable
 import scala.collection.immutable
-import scala.util.Try
 import scala.xml.NamespaceBinding
 
 abstract class Decl
@@ -76,9 +77,9 @@ object TypeSymbolParser {
 
   val XML_SCHEMA_URI = "http://www.w3.org/2001/XMLSchema"
   val XML_URI = "http://www.w3.org/XML/1998/namespace"
-  
+
   def fromString(name: String, scope: NamespaceBinding, config: ParserConfig): XsTypeSymbol =
-    fromString(splitTypeName(name, scope, config.targetNamespace))
+    fromString(splitTypeName(name, config.scope, config.targetNamespace))
 
   def fromQName(qname: javax.xml.namespace.QName): XsTypeSymbol =
     fromString((masked.scalaxb.Helper.nullOrEmpty(qname.getNamespaceURI), qname.getLocalPart))
@@ -416,8 +417,7 @@ object ElemDecl {
     var typeSymbol: XsTypeSymbol = XsAnyType
 
     (node \ "@type").headOption map { typeName =>
-      // Why use the node namespace for the reference ??? it may not always be
-      // TODO: This is why it's broken. This needs to be fixed.
+      // TODO: here is where we find the type
       typeSymbol = TypeSymbolParser.fromString(typeName.text, node.scope, config)
     } getOrElse {
       for (child <- node.child) child.label match {

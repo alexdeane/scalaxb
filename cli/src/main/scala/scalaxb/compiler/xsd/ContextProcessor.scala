@@ -240,8 +240,20 @@ trait ContextProcessor extends ScalaNames with PackageName {
       }
 
   def resolveType(schema: SchemaDecl, context: XsdContext) : Unit = {
-    def containsTypeLocally(namespace: Option[String], typeName: String): Boolean =
-      (namespace == schema.targetNamespace && schema.topTypes.contains(typeName))
+    def getTypeLocally(namespace: Option[String], typeName: String): Option[TypeDecl] = {
+      // No ns, and type is defined in same schema
+      val localTypeDeclaration = schema.topTypes.get(typeName)
+      if (namespace.isEmpty && localTypeDeclaration.isDefined)
+        return localTypeDeclaration
+
+      // Matching NS, and type is defined in a schema with the same NS (includes the current one)
+      // Note that this could also match if the type has no namespace and is declared in
+      // an unqualified schema
+      context.schemas
+        .filter(_.targetNamespace == schema.targetNamespace)
+        .flatMap(_.topTypes.get(typeName))
+        .headOption
+    }
 
     // try to resolve the symbol using local schema first
     def resolveTypeSymbol(typeSymbol: XsTypeSymbol) : Unit = {
@@ -249,8 +261,9 @@ trait ContextProcessor extends ScalaNames with PackageName {
         case symbol: ReferenceTypeSymbol =>
           if (symbol.decl != null) ()
           else {
-            if (containsTypeLocally(symbol.namespace, symbol.localPart)) symbol.decl = schema.topTypes(symbol.localPart)
-            else symbol.decl = getTypeGlobally(symbol.namespace, symbol.localPart, context)
+            symbol.decl =
+              getTypeLocally(symbol.namespace, symbol.localPart) getOrElse
+                getTypeGlobally(symbol.namespace, symbol.localPart, context)
           }
         case _ =>
       }
