@@ -134,7 +134,7 @@ object Config {
   val defaultHttp4sVersion = Http4sVersion(scalaxb.BuildInfo.defaultHttp4sVersion)
   val defaultGigahorseVersion = GigahorseVersion(scalaxb.BuildInfo.defaultGigahorseVersion)
   val defaultGigahorseBackend = GigahorseBackend(scalaxb.BuildInfo.defaultGigahorseBackend)
-  val defaultSymbolEncodingStrategy = SymbolEncoding.Legacy151
+  val defaultSymbolEncodingStrategy = SymbolEncoding.None
   val defaultEnumNameMaxLength = EnumNameMaxLength(50)
   val defaultJaxbPackage = JaxbPackage.Javax
   val defaultTargetScalaVersion = TargetScalaVersion("2.13.16")
@@ -204,13 +204,14 @@ object ConfigEntry {
     sealed abstract class Strategy(val alias: String, val description: String) extends ConfigEntry with Product with Serializable {
       final override def name: String = classOf[Strategy].getName
     }
+    case object None         extends Strategy("none",  "No special encoding. Types names are escaped with backticks.")
     case object Discard      extends Strategy("discard",       "Discards any characters that are invalid in Scala identifiers, such as dots and hyphens")
     case object SymbolName   extends Strategy("symbol-name",   "Replaces `.`, `-`, `:`, and trailing `_` in class names with `Dot`, `Hyphen`, `Colon`, and `Underscore`")
     case object UnicodePoint extends Strategy("unicode-point", "Replaces symbols with a 'u' followed by the 4-digit hexadecimal code of the character (e.g. `_` => `u005f`)")
     case object DecimalAscii extends Strategy("decimal-ascii", "Replaces symbols with a 'u' followed by the decimal code of the character (e.g. `_` => `u95`)")
     case object Legacy151    extends Strategy("legacy-1.5.1",  "Same as decimal-ascii except that _trailing_ underscores are replaced with `u93` (as introduced in v1.5.1)")
 
-    val values = Seq(Discard, SymbolName, UnicodePoint, DecimalAscii, Legacy151)
+    val values = Seq(None, Discard, SymbolName, UnicodePoint, DecimalAscii, Legacy151)
 
     def apply(alias: String): Option[Strategy] = values.find(_.alias == alias)
     def withName(alias: String): Strategy = apply(alias).getOrElse {

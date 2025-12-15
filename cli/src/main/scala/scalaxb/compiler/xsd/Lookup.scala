@@ -22,7 +22,9 @@
 
 package scalaxb.compiler.xsd
 
+import scalaxb.compiler.xsd.ContextProcessor.{SimpleTypeName, TypeName}
 import scalaxb.compiler.{Log, ReferenceNotFound}
+
 import scala.collection.mutable
 
 trait Lookup extends ContextProcessor {
@@ -124,50 +126,52 @@ trait Lookup extends ContextProcessor {
       
   def buildAttributeGroup(ref: AttributeGroupRef) =
     attributeGroups(ref.namespace, ref.name)
-  
-  def buildTypeName(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false): String = typeSymbol match {
-    case AnyType(symbol) => "scalaxb.DataRecord[Any]"
-    case XsNillableAny   => "scalaxb.DataRecord[Option[Any]]"
-    case XsLongAll       => "Map[String, scalaxb.DataRecord[Any]]"
-    case XsLongAttribute => "Map[String, scalaxb.DataRecord[Any]]"
-    case XsAnyAttribute  => "Map[String, scalaxb.DataRecord[Any]]"
-    case XsDataRecord(ReferenceTypeSymbol(decl: ComplexTypeDecl)) if compositorWrapper.contains(decl) =>
-      compositorWrapper(decl) match {
-        case choice: ChoiceDecl => buildChoiceTypeName(decl, choice, shortLocal)
-        case _ => "scalaxb.DataRecord[Any]"
-      }
-    case r: XsDataRecord => "scalaxb.DataRecord[Any]"
-    case XsMixed         => "scalaxb.DataRecord[Any]"
-    case XsNMTOKENS      => if (config.useLists) "List[String]" else XsNMTOKENS.name
-    case XsIDREFS        => if (config.useLists) "List[String]" else XsIDREFS.name
-    case XsENTITIES      => if (config.useLists) "List[String]" else XsENTITIES.name
-    case symbol: BuiltInSimpleTypeSymbol => symbol.name
-    case ReferenceTypeSymbol(decl: SimpleTypeDecl) => buildTypeName(decl, shortLocal)
-    case ReferenceTypeSymbol(decl: ComplexTypeDecl) => buildTypeName(decl, shortLocal)
-    case symbol: AttributeGroupSymbol => buildTypeName(attributeGroups(symbol.namespace, symbol.name), shortLocal)
-    case XsXMLFormat(decl: ComplexTypeDecl) => "scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]"
-    case XsXMLFormat(group: AttributeGroupDecl) => "scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]"
+
+  def buildTypeName(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false): TypeName = {
+    typeSymbol match {
+      case AnyType(symbol) => "scalaxb.DataRecord[Any]"
+      case XsNillableAny   => "scalaxb.DataRecord[Option[Any]]"
+      case XsLongAll       => "Map[String, scalaxb.DataRecord[Any]]"
+      case XsLongAttribute => "Map[String, scalaxb.DataRecord[Any]]"
+      case XsAnyAttribute  => "Map[String, scalaxb.DataRecord[Any]]"
+      case XsDataRecord(ReferenceTypeSymbol(decl: ComplexTypeDecl)) if compositorWrapper.contains(decl) =>
+        compositorWrapper(decl) match {
+          case choice: ChoiceDecl => buildChoiceTypeName(decl, choice, shortLocal)
+          case _ => "scalaxb.DataRecord[Any]"
+        }
+      case r: XsDataRecord => "scalaxb.DataRecord[Any]"
+      case XsMixed         => "scalaxb.DataRecord[Any]"
+      case XsNMTOKENS      => if (config.useLists) "List[String]" else XsNMTOKENS.name
+      case XsIDREFS        => if (config.useLists) "List[String]" else XsIDREFS.name
+      case XsENTITIES      => if (config.useLists) "List[String]" else XsENTITIES.name
+      case symbol: BuiltInSimpleTypeSymbol => symbol.name
+      case ReferenceTypeSymbol(decl: SimpleTypeDecl) => buildTypeName(decl, shortLocal)
+      case ReferenceTypeSymbol(decl: ComplexTypeDecl) => buildTypeName(decl, shortLocal)
+      case symbol: AttributeGroupSymbol => buildTypeName(attributeGroups(symbol.namespace, symbol.name), shortLocal).toString
+      case XsXMLFormat(decl: ComplexTypeDecl) => "scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]"
+      case XsXMLFormat(group: AttributeGroupDecl) => "scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]"
+    }
   }
   
   def buildChoiceTypeName(decl: ComplexTypeDecl, choice: ChoiceDecl, shortLocal: Boolean): String
   
   def xmlFormatTypeName(decl: ComplexTypeDecl): String =
     "scalaxb.XMLFormat[" + buildTypeName(decl, false) + "]"
-  
-  def buildTypeName(decl: ComplexTypeDecl, shortLocal: Boolean): String =
+
+  def buildTypeName(decl: ComplexTypeDecl, shortLocal: Boolean): TypeName =
     buildTypeName(packageName(decl, context), decl, shortLocal)
     
-  def buildEnumTypeName(decl: SimpleTypeDecl, shortLocal: Boolean): String =
+  def buildEnumTypeName(decl: SimpleTypeDecl, shortLocal: Boolean): TypeName =
     buildTypeName(packageName(decl, context), decl, shortLocal)
   
-  def buildTypeName(pkg: Option[String], decl: Decl, shortLocal: Boolean): String = {
+  def buildTypeName(pkg: Option[String], decl: Decl, shortLocal: Boolean): TypeName = {
     if (!context.typeNames.contains(decl)) sys.error(s"${pkg}: Type name not found: " + decl.toString)
     
     if (shortLocal && pkg == packageName(schema, context)) context.typeNames(decl)
     else buildFullyQualifiedNameFromPackage(pkg, context.typeNames(decl))
   }
   
-  def buildTypeName(decl: SimpleTypeDecl, shortLocal: Boolean): String = decl.content match {
+  def buildTypeName(decl: SimpleTypeDecl, shortLocal: Boolean): TypeName = decl.content match {
     case x@SimpTypRestrictionDecl(_, _) if containsEnumeration(decl)  => buildEnumTypeName(decl, shortLocal)
     case x: SimpTypRestrictionDecl                                    =>
       buildTypeName(baseType(decl), shortLocal)
@@ -176,10 +180,10 @@ trait Lookup extends ContextProcessor {
     case x: SimpTypUnionDecl => buildTypeName(baseType(decl), shortLocal)
   }
   
-  def buildTypeName(group: AttributeGroupDecl, shortLocal: Boolean): String =
+  def buildTypeName(group: AttributeGroupDecl, shortLocal: Boolean): TypeName =
     buildTypeName(packageName(group, context), group, shortLocal)
   
-  def buildTypeName(enumTypeName: String, enumDecl: EnumerationDecl[?], shortLocal: Boolean): String = {
+  def buildTypeName(enumTypeName: TypeName, enumDecl: EnumerationDecl[?], shortLocal: Boolean): TypeName = {
     val pkg = packageName(schema, context)
     val typeNames = context.enumValueNames(pkg)
     if (!typeNames.contains(enumTypeName, enumDecl))
@@ -189,18 +193,18 @@ trait Lookup extends ContextProcessor {
     else buildFullyQualifiedNameFromPackage(pkg, typeNames(enumTypeName, enumDecl))   
   }
   
-  def buildFullyQualifiedNameFromNS(namespace: Option[String], localName: String): String = {
+  def buildFullyQualifiedNameFromNS(namespace: Option[String], localName: TypeName): TypeName = {
    val pkg = packageName(namespace, context)
    buildFullyQualifiedNameFromPackage(pkg, localName)
   }
 
-  def buildFullyQualifiedNameFromPackage(pkg: Option[String], localName: String): String =
-    pkg.map(_ + ".").getOrElse("") + localName
+  def buildFullyQualifiedNameFromPackage(pkg: Option[String], localName: TypeName): TypeName =
+    SimpleTypeName(pkg.map(_ + ".").getOrElse("") + localName)
   
   def buildFormatterName(group: AttributeGroupDecl): String =
     buildFormatterName(group.namespace, buildTypeName(group, true))
   
-  def buildFormatterName(namespace: Option[String], name: String): String = {
+  def buildFormatterName(namespace: Option[String], name: TypeName): String = {
     val pkg = packageName(namespace, context) getOrElse {""}    
     pkg.filter(_ != '.').capitalize + "_" + name + "Format"
   }

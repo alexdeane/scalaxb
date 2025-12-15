@@ -71,6 +71,7 @@ trait ScalaxbKeys {
   }
 
   object SymbolEncodingStrategy extends Enumeration {
+    val None = Value("none")
     val Discard = Value("discard")
     val SymbolName = Value("symbol-name")
     val UnicodePoint = Value("unicode-point")

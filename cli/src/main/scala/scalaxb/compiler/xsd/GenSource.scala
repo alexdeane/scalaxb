@@ -22,9 +22,11 @@
 
 package scalaxb.compiler.xsd
 
-import scalaxb.compiler.{Config, Snippet, Log}
+import scalaxb.compiler.xsd.ContextProcessor.TypeName
+import scalaxb.compiler.{Config, Log, Snippet}
+
 import scala.collection.mutable
-import scala.collection.{Map}
+import scala.collection.Map
 import scala.xml._
 
 class GenSource(val schema: SchemaDecl,
@@ -224,7 +226,7 @@ class GenSource(val schema: SchemaDecl,
     }
   }
 
-  def makeCaseClassWithType(localName: String, fqn: String, decl: ComplexTypeDecl): Snippet = {
+  def makeCaseClassWithType(localName: TypeName, fqn: String, decl: ComplexTypeDecl): Snippet = {
     logger.debug("makeCaseClassWithType: emitting " + fqn)
     val formatterName = buildFormatterName(decl.namespace, localName)
 

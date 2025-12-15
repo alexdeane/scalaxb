@@ -22,6 +22,7 @@
 
 package scalaxb.compiler.wsdl11
 import scalaxb.compiler.ConfigEntry.HttpClientStyle
+import scalaxb.compiler.xsd.ContextProcessor.{SimpleTypeName, TypeName}
 
 trait GenSource {
   import masked.scalaxb.DataRecord
@@ -86,7 +87,7 @@ trait GenSource {
     logger.debug("makeSoap11Binding: " + name)
 
     val interfaceType = context.interfaces(splitTypeName(binding.typeValue))
-    val interfaceTypeName = interfaceType.name.capitalize
+    val interfaceTypeName = SimpleTypeName(interfaceType.name.capitalize)
     val interfaceTypeFQN = xsdgenerator.buildFullyQualifiedNameFromPackage(pkg, interfaceTypeName)
     val port = findPort(binding).headOption
     val address = port flatMap {_.any flatMap {
@@ -155,7 +156,7 @@ trait {interfaceTypeName}{taglessTypeConstraint} {{ self =>
     val taglessTypeConstraint = if(config.httpClientStyle == HttpClientStyle.Tagless) "[F[_]]" else ""
     val taglessTypeParam = if(config.httpClientStyle == HttpClientStyle.Tagless) "[F]" else ""
     val interfaceType = context.interfaces(splitTypeName(binding.typeValue))
-    val interfaceTypeName = interfaceType.name.capitalize
+    val interfaceTypeName = SimpleTypeName(interfaceType.name.capitalize)
     val interfaceTypeFQN = xsdgenerator.buildFullyQualifiedNameFromPackage(pkg, interfaceTypeName)
     val port = findPort(binding).headOption
     val address = port flatMap {_.any flatMap {
@@ -332,7 +333,7 @@ trait {interfaceTypeName}{taglessTypeConstraint} {{ self =>
       case _ => sys.error("unsupported.")
     }
 
-  def makeOperationOutputWrapperName(op: XOperationType): String =
+  def makeOperationOutputWrapperName(op: XOperationType): TypeName =
     xsdgenerator.makeTypeName(op.name + config.opOutputWrapperPostfix)
 
   def splitParamToParts(paramType: XParamType, paramBinding: Option[XStartWithExtensionsTypable]): (Seq[XPartType], Seq[XPartType]) = {

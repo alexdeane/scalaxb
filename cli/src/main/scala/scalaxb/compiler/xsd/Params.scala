@@ -23,8 +23,10 @@
 package scalaxb.compiler.xsd
 
 import scalaxb.compiler.Log
+
 import scala.collection.mutable
 import scalaxb.compiler.Module.camelCase
+import scalaxb.compiler.xsd.ContextProcessor.SimpleTypeName
 
 sealed abstract class Cardinality
 case object Optional extends Cardinality { override def toString: String = "Optional" }
@@ -288,26 +290,28 @@ trait Params extends Lookup {
     ElemDecl(ns, name, symbol, None, None,
       occurrence.minOccurs, occurrence.maxOccurs, Some(occurrence.nillable), false, false, None, None)
   }
-  
+
   def buildChoiceTypeName(decl: ComplexTypeDecl, choice: ChoiceDecl,
-      shortLocal: Boolean): String = 
+                          shortLocal: Boolean): String =
     if (choice.particles.size < 1) "scalaxb.DataRecord[Any]"
     else {
       val firstParticle = choice.particles(0)
-      
+
       def particleType(particle: Particle) = particle match {
         case elem: ElemDecl => Some(elem.typeSymbol)
         case ref: ElemRef => Some(buildElement(ref).typeSymbol)
         case _ => None
       }
-      
+
       def sameType: Option[XsTypeSymbol] = {
         val firstType = particleType(firstParticle)
         if (firstType.isEmpty) None
-        else if (choice.particles forall { particleType(_) == firstType }) firstType
+        else if (choice.particles forall {
+          particleType(_) == firstType
+        }) firstType
         else None
       }
-      
+
       def isOptionDescendant(particle: Particle): Boolean = particle match {
         case elem: ElemDecl =>
           elem.typeSymbol match {
@@ -319,18 +323,22 @@ trait Params extends Lookup {
             case ReferenceTypeSymbol(decl: ComplexTypeDecl) => true
             case _ => false
           }
-        case c: ChoiceDecl => c.particles forall { isOptionDescendant }
+        case c: ChoiceDecl => c.particles forall {
+          isOptionDescendant
+        }
         case seq: SequenceDecl => true
         case _ => false
       }
-      
+
       val member = sameType match {
-        case Some(AnyType(x)) => "Any"
+        case Some(AnyType(x)) => SimpleTypeName("Any")
         case Some(x) => buildTypeName(x)
         case None =>
           if (!containsForeignType(choice) &&
-              (choice.particles forall { isOptionDescendant }) ) buildTypeName(decl, shortLocal)
-          else "Any"
+            (choice.particles forall {
+              isOptionDescendant
+            })) buildTypeName(decl, shortLocal)
+          else SimpleTypeName("Any")
       }
       if (buildOccurrence(choice).nillable) "scalaxb.DataRecord[Option[" + member + "]]"
       else "scalaxb.DataRecord[" + member + "]"

@@ -27,6 +27,7 @@ import scala.collection.mutable
 import javax.xml.namespace.QName
 
 import scalaxb.compiler.ConfigEntry.SymbolEncoding
+import scala.language.implicitConversions
 
 trait PackageName {
   def packageName(schema: SchemaDecl, context: XsdContext): Option[String] =
@@ -71,7 +72,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
 
     (None :: (config.packageNames.valuesIterator.toList.distinct)) map {
       pkg =>
-        context.enumValueNames(pkg) = mutable.ListMap.empty[(String, EnumerationDecl[?]), String]
+        context.enumValueNames(pkg) = mutable.ListMap.empty[(TypeName, EnumerationDecl[?]), TypeName]
     }
 
     val anonymousTypes = mutable.ListBuffer.empty[(SchemaDecl, ComplexTypeDecl)]
@@ -404,7 +405,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
             context.compositorParents(compositor) = makeGroupComplexType(group)
 
           if (isFirstCompositor) context.compositorNames(compositor) = groupName + "Sequence"
-          else context.compositorNames(compositor) = groupName + "Sequence" + apparentSequenceNumber
+          else context.compositorNames(compositor) = groupName + ("Sequence" + apparentSequenceNumber)
           sequenceNumber += 1
 
           if (seq.particles.size > contentsSizeLimit || isWrapped(group.namespace, List(group.name)))
@@ -412,13 +413,13 @@ trait ContextProcessor extends ScalaNames with PackageName {
         case choice: ChoiceDecl =>
           context.compositorParents(compositor) = makeGroupComplexType(group)
           if (isFirstCompositor) context.compositorNames(compositor) = groupName + "Option"
-          else context.compositorNames(compositor) = groupName + "Option" + (choiceNumber + 1)
+          else context.compositorNames(compositor) = groupName + ("Option" + (choiceNumber + 1))
           choiceNumber += 1
 
         case all: AllDecl =>
           context.compositorParents(compositor) = makeGroupComplexType(group)
           if (isFirstCompositor) context.compositorNames(compositor) = groupName + "All"
-          else context.compositorNames(compositor) = groupName + "All" + (allNumber + 1)
+          else context.compositorNames(compositor) = groupName + ("All" + (allNumber + 1))
           allNumber += 1
         case _ =>
       }
@@ -428,7 +429,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
       }
     }
 
-    def formSequence(decl: ComplexTypeDecl, baseName: String, rest: List[Particle]) = {
+    def formSequence(decl: ComplexTypeDecl, baseName: TypeName, rest: List[Particle]) = {
       val retval = SequenceDecl(decl.namespace, rest, 1, 1, 0)
       context.compositorNames(retval) = baseName + "Sequence" + apparentSequenceNumber
       sequenceNumber += 1
@@ -438,8 +439,8 @@ trait ContextProcessor extends ScalaNames with PackageName {
 
     def apparentSequenceNumber = if (isFirstCompositorSequence) sequenceNumber else sequenceNumber + 1
 
-    def familyName(decl: ComplexTypeDecl): String = {
-      val x = context.typeNames(decl)
+    def familyName(decl: ComplexTypeDecl): TypeName = {
+      val x: TypeName = context.typeNames(decl)
       val prefixed = config.classPrefix map { p => x.drop(p.length) } getOrElse {x}
       config.classPostfix map { p => prefixed.dropRight(p.length) } getOrElse {prefixed}
     }
@@ -459,7 +460,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
 
           if (separateSequence) {
             context.compositorParents(compositor) = decl
-            context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + "Sequence" + apparentSequenceNumber)
+            context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + ("Sequence" + apparentSequenceNumber))
           }
           else {
             isFirstCompositorSequence = true
@@ -473,13 +474,13 @@ trait ContextProcessor extends ScalaNames with PackageName {
         case choice: ChoiceDecl =>
           context.compositorParents(compositor) = decl
           if (choiceNumber == 0) context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + "Option")
-          else context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + "Option" + (choiceNumber + 1))
+          else context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + ("Option" + (choiceNumber + 1)))
           choiceNumber += 1
 
         case all: AllDecl =>
           context.compositorParents(compositor) = decl
           if (allNumber == 0) context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + "All")
-          else context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + "All" + (allNumber + 1))
+          else context.compositorNames.getOrElseUpdate(compositor, familyName(decl) + ("All" + (allNumber + 1)))
           allNumber += 1
         case _ =>
       }
@@ -491,12 +492,12 @@ trait ContextProcessor extends ScalaNames with PackageName {
   }
 
   def makeProtectedTypeName(namespace: Option[String], initialName: String, postfix: String,
-      context: XsdContext): String = {
-    def contains(value: String) = {
+      context: XsdContext): TypeName = {
+    def contains(value: TypeName) = {
       val l = value.toLowerCase
       val enumValueNames = context.enumValueNames(packageName(namespace, context))
       (context.typeNames exists {
-        case (k: NameKey, v: String) =>
+        case (k: NameKey, v: TypeName) =>
           packageName (k.namespace, context) == packageName(namespace, context) &&
           v.toLowerCase == l
       }) ||
@@ -516,24 +517,24 @@ trait ContextProcessor extends ScalaNames with PackageName {
     }
   }
 
-  def makeProtectedTypeName(schema: SchemaDecl, context: XsdContext): String =
+  def makeProtectedTypeName(schema: SchemaDecl, context: XsdContext): TypeName =
     makeProtectedTypeName(schema.targetNamespace, "XMLProtocol", "", context)
 
   def makeProtectedTypeName(namespace: Option[String], prefix: Option[String],
-                            elem: ElemDecl, context: XsdContext): String =
+                            elem: ElemDecl, context: XsdContext): TypeName =
     makeProtectedTypeName(elem.namespace orElse namespace,
       prefix map { "%s%s".format(_, elem.name.capitalize) } getOrElse {elem.name}, "", context)
 
-  def makeProtectedTypeName(namespace: Option[String], decl: ComplexTypeDecl, context: XsdContext): String =
+  def makeProtectedTypeName(namespace: Option[String], decl: ComplexTypeDecl, context: XsdContext): TypeName =
     makeProtectedTypeName(decl.namespace orElse namespace, decl.name, "Type", context)
 
-  def makeProtectedTypeName(namespace: Option[String], decl: SimpleTypeDecl, context: XsdContext): String =
+  def makeProtectedTypeName(namespace: Option[String], decl: SimpleTypeDecl, context: XsdContext): TypeName =
     makeProtectedTypeName(decl.namespace orElse namespace, decl.name, "Type", context)
 
-  def makeProtectedTypeName(namespace: Option[String], attr: AttributeDecl, context: XsdContext): String =
+  def makeProtectedTypeName(namespace: Option[String], attr: AttributeDecl, context: XsdContext): TypeName =
     makeProtectedTypeName(attr.namespace orElse namespace, attr.name, "Type", context)
 
-  def makeProtectedTypeName(namespace: Option[String], group: AttributeGroupDecl, context: XsdContext): String =
+  def makeProtectedTypeName(namespace: Option[String], group: AttributeGroupDecl, context: XsdContext): TypeName =
     makeProtectedTypeName(group.namespace orElse namespace, group.name, "Type", context)
 
   def makeTraitName(decl: ComplexTypeDecl) =
@@ -541,20 +542,24 @@ trait ContextProcessor extends ScalaNames with PackageName {
       makeTypeName(decl.name.dropRight(1) + "able")
     else makeTypeName(decl.name + "able")
 
-  def makeTypeName(name: String) = name match {
-    case s if (s.startsWith("java.") || s.startsWith("javax.")) => s
-    case _ =>
-      val prefixed = config.classPrefix map { p =>
-        if (p.endsWith("_"))  p.capitalize + identifier(name)
-        else p.capitalize + identifier(name).capitalize
-      } getOrElse { identifier(name).capitalize }
-      val base = config.classPostfix map { p =>
-        prefixed + p
-      } getOrElse {prefixed}
+  def makeTypeName(name: String): TypeName = {
+    val typeName = name match {
+      case s if (s.startsWith("java.") || s.startsWith("javax.")) => s
+      case _ =>
+        val prefixed = config.classPrefix map { p =>
+          if (p.endsWith("_"))  p.capitalize + identifier(name)
+          else p.capitalize + identifier(name).capitalize
+        } getOrElse { identifier(name).capitalize }
+        val base = config.classPostfix map { p =>
+          prefixed + p
+        } getOrElse {prefixed}
 
-      if (startsWithNumber(base)) "Number" + base
-      else if (isCommonlyUsedWord(base)) base + "Type"
-      else base
+        if (startsWithNumber(base)) "Number" + base
+        else if (isCommonlyUsedWord(base)) base + "Type"
+        else base
+    }
+
+    TypeName.fromString(typeName)
   }
 
   def startsWithNumber(name: String) =
@@ -619,7 +624,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
     // Known issue: if `discardNonIdentifierCharacters` is set and an identifier ends in multiple underscores (e.g. `el__`)
     //              then the generated name will be invalid (`el_`, as only the last underscore will be dropped)
     if (validfirstchar.endsWith("_")) validfirstchar.dropRight(1) + normalize(validfirstchar.last)
-    else if (validfirstchar == "") "blank"
+    else if (validfirstchar.value == "") "blank"
     else validfirstchar
   }
 
@@ -634,10 +639,50 @@ trait ContextProcessor extends ScalaNames with PackageName {
 }
 
 object ContextProcessor {
+  object TypeName {
+    def fromString(string: String): TypeName =
+      if (SpecialCharacterNames.keys.exists(string contains _)) {
+        EscapedTypeName(string)
+      } else {
+        SimpleTypeName(string)
+      }
+  }
+
+  sealed trait TypeName {
+    def value: String
+
+    def drop(n: Int): TypeName = value.drop(n)
+
+    def dropRight(n: Int): TypeName = value.dropRight(n)
+
+    def last: Char = value.last
+
+    override def toString: String = super.toString
+
+    def +(suffix: Any): TypeName
+    def +:(prefix: Any): TypeName
+  }
+
+  final case class SimpleTypeName(value: String) extends TypeName {
+    def +(suffix: Any): SimpleTypeName = SimpleTypeName(value + suffix.toString)
+    def +:(prefix: Any): SimpleTypeName = SimpleTypeName(prefix.toString + value)
+  }
+
+  final case class EscapedTypeName(value: String) extends TypeName {
+    def +(suffix: Any): EscapedTypeName = EscapedTypeName(value + suffix.toString)
+    def +:(prefix: Any): EscapedTypeName = EscapedTypeName(prefix.toString + value)
+
+    override def toString: String = s"`$value`"
+  }
+
+  implicit def stringToTypeName(s: String): TypeName = TypeName.fromString(s)
+  implicit def typeNameToString(t: TypeName): String = t.toString
+
   type SymbolEncoder = Char => String
   object SymbolEncoder {
     import SymbolEncoding._
     def apply(strategy: SymbolEncoding.Strategy): SymbolEncoder = strategy match {
+      case None         => c => c.toString
       case Discard      => _ => ""
       case SymbolName   => symbolName
       case UnicodePoint => unicodePoint

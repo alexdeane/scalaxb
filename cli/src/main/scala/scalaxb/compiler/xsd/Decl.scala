@@ -23,8 +23,9 @@
 package scalaxb.compiler.xsd
 
 import masked.scalaxb.Helper.nullOrEmpty
+import scalaxb.compiler.xsd.ContextProcessor.TypeName
 
-import scala.collection.{Map}
+import scala.collection.Map
 import scala.collection.mutable
 import scala.collection.immutable
 import scala.xml.NamespaceBinding
@@ -41,14 +42,14 @@ object Incrementor {
 
 case class XsdContext(
   schemas: mutable.ListBuffer[SchemaDecl] = mutable.ListBuffer(),
-  typeNames: mutable.ListMap[NameKey, String] = mutable.ListMap(),
+  typeNames: mutable.ListMap[NameKey, TypeName] = mutable.ListMap(),
   enumValueNames: mutable.ListMap[Option[String],
-      mutable.ListMap[(String, EnumerationDecl[?]), String]] = mutable.ListMap(),
+      mutable.ListMap[(TypeName, EnumerationDecl[?]), TypeName]] = mutable.ListMap(),
   packageNames: mutable.ListMap[Option[String], Option[String]] = mutable.ListMap(),
   complexTypes: mutable.ListBuffer[(SchemaDecl, ComplexTypeDecl)] = mutable.ListBuffer(),
   baseToSubs: mutable.ListMap[ComplexTypeDecl, List[ComplexTypeDecl]] = mutable.ListMap(),
   compositorParents: mutable.ListMap[HasParticle, ComplexTypeDecl] = mutable.ListMap(),
-  compositorNames: mutable.ListMap[HasParticle, String] = mutable.ListMap(),
+  compositorNames: mutable.ListMap[HasParticle, TypeName] = mutable.ListMap(),
   groups: mutable.ListBuffer[(SchemaDecl, GroupDecl)] = mutable.ListBuffer(),
   substituteGroups: mutable.ListBuffer[(Option[String], String)] = mutable.ListBuffer(),
   prefixes: mutable.ListMap[String, String] = mutable.ListMap(),
@@ -179,19 +180,19 @@ object SchemaDecl {
       case "group" =>
         (child \ "@name").headOption foreach {  x =>
           val group = GroupDecl.fromXML(child, config)
-          config.topGroups += (group.name -> group) }
+          config.topGroups += (group.name.toString -> group) }
       
       case "complexType" =>
         (child \ "@name").headOption foreach {  x =>
           val decl = ComplexTypeDecl.fromXML(child, x.text, List(x.text), config)
           config.typeList += decl
-          config.topTypes += (decl.name -> decl) }
+          config.topTypes += (decl.name.toString -> decl) }
       
       case "simpleType" =>
         (child \ "@name").headOption foreach {  x =>
           val decl = SimpleTypeDecl.fromXML(child, x.text, List(x.text), config)
           config.typeList += decl
-          config.topTypes += (decl.name -> decl) }
+          config.topTypes += (decl.name.toString -> decl) }
       
       case _ =>
     }
@@ -473,13 +474,13 @@ object ElemDecl {
 
 trait TypeDecl extends Decl with Annotatable {
   def namespace: Option[String]
-  def name: String
+  def name: TypeName
 }
 
 /** simple types cannot have element children or attributes.
  */
 case class SimpleTypeDecl(namespace: Option[String],
-    name: String,
+    name: TypeName,
     family: List[String],
     content: ContentTypeDecl,
     annotation: Option[AnnotationDecl]) extends TypeDecl {
@@ -510,7 +511,7 @@ object SimpleTypeDecl {
 /** complex types may have element children and attributes.
  */
 case class ComplexTypeDecl(namespace: Option[String],
-    name: String,
+    name: TypeName,
     family: List[String],
     abstractValue: Boolean,
     mixed: Boolean,
@@ -748,7 +749,7 @@ object GroupRef {
 }
 
 case class GroupDecl(namespace: Option[String],
-  name: String,
+  name: TypeName,
   particles: List[Particle],
   minOccurs: Int,
   maxOccurs: Int,
@@ -756,7 +757,7 @@ case class GroupDecl(namespace: Option[String],
 
 object GroupDecl {
   def fromXML(node: scala.xml.Node, config: ParserConfig) = {
-    val name = (node \ "@name").text
+    val name = TypeName.fromString((node \ "@name").text)
     val minOccurs = CompositorDecl.buildOccurrence((node \ "@minOccurs").text)
     val maxOccurs = CompositorDecl.buildOccurrence((node \ "@maxOccurs").text)
     
