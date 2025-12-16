@@ -129,31 +129,31 @@ trait Lookup extends ContextProcessor {
 
   def buildTypeName(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false): TypeName = {
     typeSymbol match {
-      case AnyType(symbol) => "scalaxb.DataRecord[Any]"
-      case XsNillableAny   => "scalaxb.DataRecord[Option[Any]]"
-      case XsLongAll       => "Map[String, scalaxb.DataRecord[Any]]"
-      case XsLongAttribute => "Map[String, scalaxb.DataRecord[Any]]"
-      case XsAnyAttribute  => "Map[String, scalaxb.DataRecord[Any]]"
+      case AnyType(symbol) => SimpleTypeName("scalaxb.DataRecord[Any]")
+      case XsNillableAny   => SimpleTypeName("scalaxb.DataRecord[Option[Any]]")
+      case XsLongAll       => SimpleTypeName("Map[String, scalaxb.DataRecord[Any]]")
+      case XsLongAttribute => SimpleTypeName("Map[String, scalaxb.DataRecord[Any]]")
+      case XsAnyAttribute  => SimpleTypeName("Map[String, scalaxb.DataRecord[Any]]")
       case XsDataRecord(ReferenceTypeSymbol(decl: ComplexTypeDecl)) if compositorWrapper.contains(decl) =>
         compositorWrapper(decl) match {
           case choice: ChoiceDecl => buildChoiceTypeName(decl, choice, shortLocal)
-          case _ => "scalaxb.DataRecord[Any]"
+          case _ => SimpleTypeName("scalaxb.DataRecord[Any]")
         }
-      case r: XsDataRecord => "scalaxb.DataRecord[Any]"
-      case XsMixed         => "scalaxb.DataRecord[Any]"
-      case XsNMTOKENS      => if (config.useLists) "List[String]" else XsNMTOKENS.name
-      case XsIDREFS        => if (config.useLists) "List[String]" else XsIDREFS.name
-      case XsENTITIES      => if (config.useLists) "List[String]" else XsENTITIES.name
-      case symbol: BuiltInSimpleTypeSymbol => symbol.name
+      case r: XsDataRecord => SimpleTypeName("scalaxb.DataRecord[Any]")
+      case XsMixed         => SimpleTypeName("scalaxb.DataRecord[Any]")
+      case XsNMTOKENS      => SimpleTypeName(if (config.useLists) "List[String]" else XsNMTOKENS.name)
+      case XsIDREFS        => SimpleTypeName(if (config.useLists) "List[String]" else XsIDREFS.name)
+      case XsENTITIES      => SimpleTypeName(if (config.useLists) "List[String]" else XsENTITIES.name)
+      case symbol: BuiltInSimpleTypeSymbol => TypeName.fromString(symbol.name)
       case ReferenceTypeSymbol(decl: SimpleTypeDecl) => buildTypeName(decl, shortLocal)
       case ReferenceTypeSymbol(decl: ComplexTypeDecl) => buildTypeName(decl, shortLocal)
-      case symbol: AttributeGroupSymbol => buildTypeName(attributeGroups(symbol.namespace, symbol.name), shortLocal).toString
-      case XsXMLFormat(decl: ComplexTypeDecl) => "scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]"
-      case XsXMLFormat(group: AttributeGroupDecl) => "scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]"
+      case symbol: AttributeGroupSymbol => buildTypeName(attributeGroups(symbol.namespace, symbol.name), shortLocal)
+      case XsXMLFormat(decl: ComplexTypeDecl) => SimpleTypeName("scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]")
+      case XsXMLFormat(group: AttributeGroupDecl) => SimpleTypeName("scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]")
     }
   }
   
-  def buildChoiceTypeName(decl: ComplexTypeDecl, choice: ChoiceDecl, shortLocal: Boolean): String
+  def buildChoiceTypeName(decl: ComplexTypeDecl, choice: ChoiceDecl, shortLocal: Boolean): TypeName
   
   def xmlFormatTypeName(decl: ComplexTypeDecl): String =
     "scalaxb.XMLFormat[" + buildTypeName(decl, false) + "]"
@@ -175,8 +175,10 @@ trait Lookup extends ContextProcessor {
     case x@SimpTypRestrictionDecl(_, _) if containsEnumeration(decl)  => buildEnumTypeName(decl, shortLocal)
     case x: SimpTypRestrictionDecl                                    =>
       buildTypeName(baseType(decl), shortLocal)
-    case x: SimpTypListDecl => if (config.useLists) "List[" + buildTypeName(baseType(decl), shortLocal) + "]"
-                               else "Seq[" + buildTypeName(baseType(decl), shortLocal) + "]"
+    case x: SimpTypListDecl => SimpleTypeName(
+      if (config.useLists) "List[" + buildTypeName(baseType(decl), shortLocal) + "]"
+      else "Seq[" + buildTypeName(baseType(decl), shortLocal) + "]"
+    )
     case x: SimpTypUnionDecl => buildTypeName(baseType(decl), shortLocal)
   }
   

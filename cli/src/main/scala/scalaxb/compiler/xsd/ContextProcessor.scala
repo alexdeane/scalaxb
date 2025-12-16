@@ -27,7 +27,6 @@ import scala.collection.mutable
 import javax.xml.namespace.QName
 
 import scalaxb.compiler.ConfigEntry.SymbolEncoding
-import scala.language.implicitConversions
 
 trait PackageName {
   def packageName(schema: SchemaDecl, context: XsdContext): Option[String] =
@@ -594,7 +593,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
 
   private lazy val symbolEncoder = SymbolEncoder(config.symbolEncodingStrategy)
 
-  def identifier(value: String) = {
+  def identifier(value: String): String = {
     def normalize(c: Char): String = {
       val encoded = symbolEncoder(c)
       if (config.capitalizeWords) encoded.capitalize else encoded
@@ -624,7 +623,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
     // Known issue: if `discardNonIdentifierCharacters` is set and an identifier ends in multiple underscores (e.g. `el__`)
     //              then the generated name will be invalid (`el_`, as only the last underscore will be dropped)
     if (validfirstchar.endsWith("_")) validfirstchar.dropRight(1) + normalize(validfirstchar.last)
-    else if (validfirstchar.value == "") "blank"
+    else if (validfirstchar == "") "blank"
     else validfirstchar
   }
 
@@ -640,24 +639,33 @@ trait ContextProcessor extends ScalaNames with PackageName {
 
 object ContextProcessor {
   object TypeName {
-    def fromString(string: String): TypeName =
-      if (SpecialCharacterNames.keys.exists(string contains _)) {
-        EscapedTypeName(string)
-      } else {
-        SimpleTypeName(string)
+    def fromString(string: String): TypeName = {
+      var stringMut = string
+
+      // Unwrap string if already wrapped
+      if (string.startsWith("`") && string.endsWith("`")) {
+        stringMut = string.substring(1, string.length - 1)
       }
+
+      if (SpecialCharacterNames.keys.exists(stringMut contains _)) {
+        EscapedTypeName(stringMut)
+      } else {
+        SimpleTypeName(stringMut)
+      }
+    }
   }
 
   sealed trait TypeName {
     def value: String
 
-    def drop(n: Int): TypeName = value.drop(n)
+    def drop(n: Int): TypeName = TypeName.fromString(value.drop(n))
 
-    def dropRight(n: Int): TypeName = value.dropRight(n)
+    def dropRight(n: Int): TypeName = TypeName.fromString(value.dropRight(n))
 
     def last: Char = value.last
 
     override def toString: String = super.toString
+    def contains(string: String): Boolean = value == string
 
     def +(suffix: Any): TypeName
     def +:(prefix: Any): TypeName
@@ -675,7 +683,6 @@ object ContextProcessor {
     override def toString: String = s"`$value`"
   }
 
-  implicit def stringToTypeName(s: String): TypeName = TypeName.fromString(s)
   implicit def typeNameToString(t: TypeName): String = t.toString
 
   type SymbolEncoder = Char => String

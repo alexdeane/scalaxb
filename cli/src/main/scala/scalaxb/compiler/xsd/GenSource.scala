@@ -236,7 +236,7 @@ class GenSource(val schema: SchemaDecl,
       case _ => None
     }
     val effectiveMixed = buildEffectiveMixed(decl)
-    val superNames: List[String] =
+    val superNames: List[TypeName] =
       if (context.baseToSubs.contains(decl)) List(buildTypeName(decl, true))
       else buildSuperNames(decl)
 
@@ -717,7 +717,7 @@ object {localName} {{
         }
     }
     
-  def buildSuperNames(decl: ComplexTypeDecl) =
+  def buildSuperNames(decl: ComplexTypeDecl): List[TypeName] =
     buildSuperName(decl) ::: buildOptions(decl)
   
   def buildSuperName(decl: ComplexTypeDecl) = 
@@ -726,7 +726,7 @@ object {localName} {{
       case _ => Nil
     }
 
-  def buildOptions(decl: ComplexTypeDecl): List[String] = {
+  def buildOptions(decl: ComplexTypeDecl): List[TypeName] = {
     val set = mutable.ListBuffer.empty[String]
     def addIfMatch(typeSymbol: XsTypeSymbol, choice: ChoiceDecl) = {
       typeSymbol match {
@@ -747,7 +747,7 @@ object {localName} {{
       case _ => // do nothing
     }
         
-    set.toList.distinct
+    set.toList.distinct map TypeName.fromString
   }
   
   // reverse lookup all choices that contains that.

@@ -504,7 +504,7 @@ object SimpleTypeDecl {
     val annotation = (node \ "annotation").headOption map { x =>
       AnnotationDecl.fromXML(x, config) }
     
-    SimpleTypeDecl(config.targetNamespace, name, family, content, annotation)
+    SimpleTypeDecl(config.targetNamespace, TypeName.fromString(name), family, content, annotation)
   }
 }
 
@@ -560,7 +560,7 @@ object ComplexTypeDecl {
       AnnotationDecl.fromXML(x, config) }
     
     // val contentModel = ContentModel.fromSchema(firstChild(node))
-    ComplexTypeDecl(config.targetNamespace, name, family, abstractValue, mixed, 
+    ComplexTypeDecl(config.targetNamespace, TypeName.fromString(name), family, abstractValue, mixed,
       content, attributes, annotation)
   }
 }

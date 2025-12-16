@@ -114,8 +114,8 @@ trait XMLOutput extends Args {
   def buildToString(selector: String, typeSymbol: XsTypeSymbol): String = typeSymbol match {
     case symbol: BuiltInSimpleTypeSymbol =>
       buildTypeName(symbol) match {
-        case "javax.xml.namespace.QName" => s"scalaxb.Helper.toString(${selector}, __scope)"
-        case "BigDecimal" => selector + ".bigDecimal.toPlainString"
+        case x if x contains "javax.xml.namespace.QName" => s"scalaxb.Helper.toString(${selector}, __scope)"
+        case x if x contains "BigDecimal" => selector + ".bigDecimal.toPlainString"
         case _ => selector + ".toString"
       }
     case ReferenceTypeSymbol(decl: SimpleTypeDecl) =>       

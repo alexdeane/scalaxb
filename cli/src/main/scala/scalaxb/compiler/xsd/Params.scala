@@ -26,7 +26,7 @@ import scalaxb.compiler.Log
 
 import scala.collection.mutable
 import scalaxb.compiler.Module.camelCase
-import scalaxb.compiler.xsd.ContextProcessor.SimpleTypeName
+import scalaxb.compiler.xsd.ContextProcessor.{SimpleTypeName, TypeName}
 
 sealed abstract class Cardinality
 case object Optional extends Cardinality { override def toString: String = "Optional" }
@@ -277,7 +277,7 @@ trait Params extends Lookup {
     }
 
     val symbol = ReferenceTypeSymbol(ns, typeName)
-    val decl = ComplexTypeDecl(ns, symbol.localPart, List(symbol.name),
+    val decl = ComplexTypeDecl(ns, TypeName.fromString(symbol.localPart), List(symbol.name),
       false, false, ComplexContentDecl.empty, Nil, None)
 
     compositorWrapper(decl) = compositor
@@ -292,8 +292,8 @@ trait Params extends Lookup {
   }
 
   def buildChoiceTypeName(decl: ComplexTypeDecl, choice: ChoiceDecl,
-                          shortLocal: Boolean): String =
-    if (choice.particles.size < 1) "scalaxb.DataRecord[Any]"
+                          shortLocal: Boolean): TypeName =
+    if (choice.particles.size < 1) SimpleTypeName("scalaxb.DataRecord[Any]")
     else {
       val firstParticle = choice.particles(0)
 
@@ -340,7 +340,10 @@ trait Params extends Lookup {
             })) buildTypeName(decl, shortLocal)
           else SimpleTypeName("Any")
       }
-      if (buildOccurrence(choice).nillable) "scalaxb.DataRecord[Option[" + member + "]]"
-      else "scalaxb.DataRecord[" + member + "]"
+
+      SimpleTypeName(
+        if (buildOccurrence(choice).nillable) "scalaxb.DataRecord[Option[" + member + "]]"
+        else "scalaxb.DataRecord[" + member + "]"
+      )
     }
 }
