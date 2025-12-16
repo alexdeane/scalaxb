@@ -63,7 +63,7 @@ class ParserConfig {
   var attributeQualifiedDefault: Boolean = false
   val topElems  = mutable.ListMap.empty[String, ElemDecl]
   val elemList  = mutable.ListBuffer.empty[ElemDecl]
-  val topTypes  = mutable.ListMap.empty[String, TypeDecl]
+  val topTypes  = mutable.ListMap.empty[TypeName, TypeDecl]
   val typeList  = mutable.ListBuffer.empty[TypeDecl]
   val topAttrs  = mutable.ListMap.empty[String, AttributeDecl]
   val attrList  = mutable.ListBuffer.empty[AttributeDecl]
@@ -121,7 +121,7 @@ case class SchemaDecl(targetNamespace: Option[String],
     attributeQualifiedDefault: Boolean = false,
     topElems: Map[String, ElemDecl] = Map(),
     elemList: List[ElemDecl] = Nil,
-    topTypes: Map[String, TypeDecl] = Map(),
+    topTypes: Map[TypeName, TypeDecl] = Map(),
     typeList: List[TypeDecl] = Nil,
     choices: List[ChoiceDecl] = Nil,
     topAttrs: Map[String, AttributeDecl] = Map(),
@@ -186,13 +186,13 @@ object SchemaDecl {
         (child \ "@name").headOption foreach {  x =>
           val decl = ComplexTypeDecl.fromXML(child, x.text, List(x.text), config)
           config.typeList += decl
-          config.topTypes += (decl.name.toString -> decl) }
+          config.topTypes += (decl.name -> decl) }
       
       case "simpleType" =>
         (child \ "@name").headOption foreach {  x =>
           val decl = SimpleTypeDecl.fromXML(child, x.text, List(x.text), config)
           config.typeList += decl
-          config.topTypes += (decl.name.toString -> decl) }
+          config.topTypes += (decl.name -> decl) }
       
       case _ =>
     }
@@ -212,7 +212,7 @@ object SchemaDecl {
       config.attributeQualifiedDefault,
       immutable.ListMap.empty[String, ElemDecl] ++ config.topElems,
       config.elemList.toList,
-      immutable.ListMap.empty[String, TypeDecl] ++ config.topTypes,
+      immutable.ListMap.empty[TypeName, TypeDecl] ++ config.topTypes,
       config.typeList.toList,
       config.choices.toList,
       immutable.ListMap.empty[String, AttributeDecl] ++ config.topAttrs,

@@ -68,7 +68,7 @@ trait Lookup extends ContextProcessor {
   def buildSymbolElement(symbol: XsTypeSymbol): ElemDecl =
     ElemDecl(schema.targetNamespace, "value", symbol, None, None, 1, 1)
 
-  def groups(namespace: Option[String], name: String) =
+  def groups(namespace: Option[String], name: TypeName) =
     (for (schema <- schemas;
          if schema.targetNamespace == namespace;
          if schema.topGroups.contains(name))
@@ -78,7 +78,7 @@ trait Lookup extends ContextProcessor {
     }
 
   def buildGroup(ref: GroupRef) = {
-    val that = groups(ref.namespace, ref.name)
+    val that = groups(ref.namespace, TypeName.fromString(ref.name))
 
     // http://www.w3.org/TR/xmlschema-0/#Globals
     // In other words, global declarations cannot contain the attributes

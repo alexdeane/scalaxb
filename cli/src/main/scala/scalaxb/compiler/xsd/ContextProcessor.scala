@@ -231,7 +231,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
     )}
   }
 
-  def getTypeGlobally(namespace: Option[String], typeName: String, context: XsdContext): TypeDecl =
+  def getTypeGlobally(namespace: Option[String], typeName: TypeName, context: XsdContext): TypeDecl =
     (for (schema <- context.schemas;
         if schema.targetNamespace == namespace;
         if schema.topTypes.contains(typeName))
@@ -240,7 +240,7 @@ trait ContextProcessor extends ScalaNames with PackageName {
       }
 
   def resolveType(schema: SchemaDecl, context: XsdContext) : Unit = {
-    def getTypeLocally(namespace: Option[String], typeName: String): Option[TypeDecl] = {
+    def getTypeLocally(namespace: Option[String], typeName: TypeName): Option[TypeDecl] = {
       // No ns, and type is defined in same schema
       val localTypeDeclaration = schema.topTypes.get(typeName)
       if (namespace.isEmpty && localTypeDeclaration.isDefined)
@@ -261,9 +261,11 @@ trait ContextProcessor extends ScalaNames with PackageName {
         case symbol: ReferenceTypeSymbol =>
           if (symbol.decl != null) ()
           else {
+            val typeName = TypeName.fromString(symbol.localPart)
+
             symbol.decl =
-              getTypeLocally(symbol.namespace, symbol.localPart) getOrElse
-                getTypeGlobally(symbol.namespace, symbol.localPart, context)
+              getTypeLocally(symbol.namespace, typeName) getOrElse
+                getTypeGlobally(symbol.namespace, typeName, context)
           }
         case _ =>
       }

@@ -85,15 +85,6 @@ class GenSource(val schema: SchemaDecl,
   def makeType(decl: ComplexTypeDecl): Snippet =
     makeCaseClassWithType(buildTypeName(decl, true), buildTypeName(decl, false), decl)
   
-  def types(namespace: Option[String], name: String) =
-    (for (schema <- schemas;
-          if schema.targetNamespace == namespace;
-          if schema.topTypes.contains(name))
-      yield schema.topTypes(name)) match {
-        case x :: xs => x
-        case Nil     => sys.error("Type not found: {" + namespace + "}:" + name)
-      }
-      
   def baseToDescendants(base: ComplexTypeDecl): List[ComplexTypeDecl] =
     context.baseToSubs(base) flatMap { child =>
       child :: (

@@ -830,7 +830,7 @@ trait {interfaceTypeName}{taglessTypeConstraint} {{ self =>
     symbol match {
       case symbol: ReferenceTypeSymbol =>
         val (namespace, typeName) = splitTypeName(qname)
-        symbol.decl = xsdgenerator.getTypeGlobally(namespace, typeName, context.xsdcontext)
+        symbol.decl = xsdgenerator.getTypeGlobally(namespace, TypeName.fromString(typeName), context.xsdcontext)
       case _ =>
     }
     symbol
